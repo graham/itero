@@ -8,6 +8,7 @@ class JSONDatabase(Database):
     initial_state_data = {
         'last_compact': int(time.time()),
         'revision': 0,
+        'eager_load_data':True,
         }
 
     def initialize(self):
@@ -21,12 +22,16 @@ class JSONDatabase(Database):
             f = open(self.local_state_filename, 'w')
             f.write( json.dumps( JSONDatabase.initial_state_data ) )
             f.close()
-        else:
-            self.local_config = json.loads( open(self.local_state_filename).read() )
             
-        #keys to data (although data may be in a file, or in a compacted file)
+        self.local_config = json.loads( open(self.local_state_filename).read() )
+            
+        # keys to data (although data may be in a file, or in a compacted file)
         self.objects = {}
-        
+        if self.local_config['eager_load_data']:
+            p = self.data_path + '/file/'
+            for i in os.listdir(p):
+                self.objects[i] = JSONRow.load(self, i)
+                
     def transaction(self):
         return JSONTransaction(self.local_config['revision'])
 
@@ -72,13 +77,15 @@ class JSONRow(Row):
         f.write( json.dumps(self.data) )
         f.close() 
         self.changes = []
+        return self
 
-    def load(self, db, key):
-        f = open(db.data_path + '/file/' + key, 'w')
-        self.data = json.loads( f.read() )
-        if self.data == None:
-            self.data = {}
-        self.key = key
+    @classmethod
+    def load(cls, db, key):
+        f = open(db.data_path + '/file/' + key, 'r')
+        o = JSONRow(key, json.loads(f.read()))
+        if o.data == None:
+            o.data = {}
+        return o
         
 class JSONStatement(Statement):
     def __init__(self, key, action, values):

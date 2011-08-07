@@ -6,6 +6,7 @@ class Row(object):
         self.location_type = 'file' # 'file' or 'packed_file'
         self.data = data
         self.changes = []
+
     def save(self, db):
         pass
 

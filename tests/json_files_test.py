@@ -43,7 +43,7 @@ class TestJSONDatabase(unittest.TestCase):
         self.assertEqual( x.get(key), value )
 
     def test_key_update(self):
-        key = 'test_key'
+        key = 'test_key-update'
 
         value = {'one':1}
         value2 = {'one':1, 'two':2}
@@ -75,7 +75,6 @@ class TestJSONDatabase(unittest.TestCase):
         value2 = {'one':1, 'two':2, 'three':3}
         value3 = {'one':1}
 
-
         x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
         x.execute(key, "update", value)
         self.assertEqual( x.get(key), value)
@@ -94,6 +93,27 @@ class TestJSONDatabase(unittest.TestCase):
         self.assertEqual(x.get(key), value)
         x.execute(key, 'drop', None)
         self.assertEqual(x.get(key), None)
+
+    def test_reload_data_from_file(self):
+        key = 'test-reload-database-key'
+        value = {'motd':'today there are eggs for breakfast.'}
+
+        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x.execute(key, 'update', value)
+        
+        y = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        self.assertEqual(y.get(key), value)
+    
+    def test_foreign_writes(self):
+        key = 'test-foreign-writes'
+        value = {'key':'value'}
+
+        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x.execute(key, 'update', value)
+        
+        
+
+
 
 if __name__ == '__main__':
     unittest.main()
