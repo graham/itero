@@ -1,17 +1,20 @@
 import unittest
 import os
 import sys
+import shutil
 sys.path.append('.')
 
 from adapters.json_files import *
 
 class TestJSONDatabase(unittest.TestCase):
-    data_path = '/tmp/json_test/'
-    state_path = '/tmp/json_state.db'
+    data_path = './sandbox/json_test/'
+    state_path = './sandbox/json_state.db'
+    add_dirs = ('', '/compact', '/file', '/transaction')
 
     def init(self):
-        if os.path.isdir(TestJSONDatabase.data_path):
-            os.removedirs(TestJSONDatabase.data_path)
+        for i in TestJSONDatabase.add_dirs:
+            if os.path.isdir(TestJSONDatabase.data_path + i):
+                shutil.rmtree(TestJSONDatabase.data_path + i)
         if os.path.isfile(TestJSONDatabase.state_path):
             os.remove(TestJSONDatabase.state_path)
 

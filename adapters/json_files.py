@@ -9,11 +9,13 @@ class JSONDatabase(Database):
         'last_compact': int(time.time()),
         'revision': 0,
         }
+
     def initialize(self):
-        if not os.path.isdir(self.data_path):
-            os.mkdir(self.data_path)
-        else:
-            pass
+        for p in ('', '/compact', '/file', '/transaction'):
+            if not os.path.isdir(self.data_path + p):
+                os.mkdir(self.data_path + p )
+            else:
+                pass
 
         if not os.path.isfile(self.local_state_filename):
             f = open(self.local_state_filename, 'w')
@@ -34,7 +36,6 @@ class JSONDatabase(Database):
     def keys(self):
         return self.objects.keys()
 
-    #quick and dirty
     def execute(self, key, action, values):
         t = self.transaction()
         t.add( self.statement( key, action, values ) )
@@ -42,37 +43,43 @@ class JSONDatabase(Database):
         
     def get(self, key):
         if key in self.objects:
-            return self.objects[key].data
+            x = self.objects[key].data
+            if x:
+                return x.copy()
+            else:
+                return None
         else:
             return None
 
-from commit import Statement, Transaction
+from commit import Statement, Transaction, Row
 
-class JSONRow(object):
-    def __init__(self, key, data):
-        self.key = key
-        self.location_type = 'file' # 'file' or 'packed_file'
-        self.data = data
-
+class JSONRow(Row):
     def apply_statement(self, statement):
         data = self.data.copy()
+        self.changes.append( statement.as_row() )
         if statement.action == 'update':
             data.update( statement.values )
         elif statement.action == 'pop':
             for i in statement.values:
                 data.pop(i)
         elif statement.action == 'drop':
-            return None
+            data = None
 
         return data
 
-    def save(self):
-        pass
-    def load(self):
-        pass
-    def delete(self):
-        pass
+    def save(self, db):
+        f = open(db.data_path + '/file/' + self.key, 'w')
+        f.write( json.dumps(self.data) )
+        f.close() 
+        self.changes = []
 
+    def load(self, db, key):
+        f = open(db.data_path + '/file/' + key, 'w')
+        self.data = json.loads( f.read() )
+        if self.data == None:
+            self.data = {}
+        self.key = key
+        
 class JSONStatement(Statement):
     def __init__(self, key, action, values):
         self.key = key
@@ -80,7 +87,7 @@ class JSONStatement(Statement):
         self.values = values
 
     def as_row(self):
-        return json.dumps( [key, action, values] )
+        return json.dumps( [self.key, self.action, self.values] )
 
 class JSONTransaction(Transaction):
     def add(self, statement):
@@ -95,7 +102,9 @@ class JSONTransaction(Transaction):
             new_d = d.apply_statement(i)
             if new_d == None:
                 db.objects.pop(i.key)
-                
-            db.objects[i.key] = JSONRow(i.key, new_d)
+            o = JSONRow(i.key, new_d)
+            o.save(db)
+            db.objects[i.key] = o
+            
 
         

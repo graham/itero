@@ -1,3 +1,3 @@
 #! /bin/bash
 
-python tests/* -v
+python tests/json_files_test.py
