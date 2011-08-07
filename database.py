@@ -2,6 +2,8 @@ import sys
 import os
 import time
 
+from util import __not_implemented__
+
 VERBOSE = 0
 
 class Database(object):
@@ -17,18 +19,5 @@ class Database(object):
         #Lets get this show on the road!
         self.initialize()
 
-    def __not_implemented__(self): 
-        raise Exception("Someone didn't write this function")
     initialize = checkpoint = compact = commit = __not_implemented__
-
-
-    
-        
-        
-class SQLiteDatabase(Database):
-    pass
-
-class KeyValueDatabase(Database):
-    pass
-
 

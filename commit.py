@@ -6,3 +6,4 @@ class Transaction(object):
     # Can be applied to a DB, and serialized/deserialized so that it can be replayed.
     pass
 
+
