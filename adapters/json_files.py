@@ -31,6 +31,9 @@ class JSONDatabase(Database):
             p = self.data_path + '/file/'
             for i in os.listdir(p):
                 self.objects[i] = JSONRow.load(self, i)
+            self.get = self.get_eager
+        else:
+            self.get = self.get_lazy
                 
     def transaction(self):
         return JSONTransaction(self.local_config['revision'])
@@ -38,15 +41,24 @@ class JSONDatabase(Database):
     def statement(self, *args, **kwargs):
         return JSONStatement(*args, **kwargs)
 
-    def keys(self):
-        return self.objects.keys()
-
     def execute(self, key, action, values):
         t = self.transaction()
         t.add( self.statement( key, action, values ) )
         return t.apply(self)
         
-    def get(self, key):
+    def get_lazy(self, key):
+        p = self.data_path + '/file/' + key
+        if os.path.isfile( p ):
+            o = JSONRow.load(self, key)
+            if o.data:
+                self.objects[key] = o
+                return o.data.copy()
+            else:
+                return None
+        else:
+            return None
+
+    def get_eager(self, key):
         if key in self.objects:
             x = self.objects[key].data
             if x:
@@ -73,6 +85,12 @@ class JSONRow(Row):
         return data
 
     def save(self, db):
+        if self.location_type == 'file':
+            return self.save_file(db)
+        else:
+            __not_implmemented__()
+
+    def save_file(self, db):
         f = open(db.data_path + '/file/' + self.key, 'w')
         f.write( json.dumps(self.data) )
         f.close() 
@@ -80,7 +98,11 @@ class JSONRow(Row):
         return self
 
     @classmethod
-    def load(cls, db, key):
+    def load(self, db, key):
+        return self.load_file(db, key)
+
+    @classmethod
+    def load_file(cls, db, key):
         f = open(db.data_path + '/file/' + key, 'r')
         o = JSONRow(key, json.loads(f.read()))
         if o.data == None:

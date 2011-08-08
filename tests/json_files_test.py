@@ -10,6 +10,12 @@ class TestJSONDatabase(unittest.TestCase):
     data_path = './sandbox/json_test/'
     state_path = './sandbox/json_state.db'
     add_dirs = ('', '/compact', '/file', '/transaction')
+    is_lazy = False
+
+    def connect(self):
+        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x.local_config['eager_load_data'] = TestJSONDatabase.is_lazy
+        return x
 
     def init(self):
         for i in TestJSONDatabase.add_dirs:
@@ -23,13 +29,13 @@ class TestJSONDatabase(unittest.TestCase):
 
     def test_create_db(self):
         self.init()
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         self.assertTrue(os.path.isdir(TestJSONDatabase.data_path))
         self.assertTrue(os.path.isfile(TestJSONDatabase.state_path))
         self.assertNotEqual(x, None)
 
     def test_load_db(self):
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         self.assertTrue(os.path.isdir(TestJSONDatabase.data_path))
         self.assertTrue(os.path.isfile(TestJSONDatabase.state_path))
         self.assertNotEqual(x, None)
@@ -37,7 +43,7 @@ class TestJSONDatabase(unittest.TestCase):
     def test_create_key(self):
         key = 'test_key'
         value = {'one':1, 'two':2}
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, "update", value)
         self.assertNotEqual( x.get(key), None )
         self.assertEqual( x.get(key), value )
@@ -54,7 +60,7 @@ class TestJSONDatabase(unittest.TestCase):
         update3 = {'one':951}
         update4 = {'three':'fuck you'}
 
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, "update", value)
         self.assertNotEqual( x.get(key), None )
         self.assertEqual( x.get(key), value )
@@ -75,7 +81,7 @@ class TestJSONDatabase(unittest.TestCase):
         value2 = {'one':1, 'two':2, 'three':3}
         value3 = {'one':1}
 
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, "update", value)
         self.assertEqual( x.get(key), value)
         
@@ -88,7 +94,7 @@ class TestJSONDatabase(unittest.TestCase):
     def test_key_drop(self):
         key = 'test-key-3'
         value = {'one':1}
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, 'update', value)
         self.assertEqual(x.get(key), value)
         x.execute(key, 'drop', None)
@@ -98,7 +104,7 @@ class TestJSONDatabase(unittest.TestCase):
         key = 'test-reload-database-key'
         value = {'motd':'today there are eggs for breakfast.'}
 
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, 'update', value)
         
         y = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
@@ -108,11 +114,11 @@ class TestJSONDatabase(unittest.TestCase):
         key = 'test-foreign-writes'
         value = {'key':'value'}
 
-        x = JSONDatabase(TestJSONDatabase.state_path, TestJSONDatabase.data_path)
+        x = self.connect()
         x.execute(key, 'update', value)
         
-        
-
+class TestJSONDatabaseLazy(TestJSONDatabase):
+    is_lazy = True
 
 
 if __name__ == '__main__':
