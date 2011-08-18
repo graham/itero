@@ -1,3 +1,5 @@
 #! /bin/bash
 
-python tests/json_files_test.py
+clc.py
+python tests/test_database.py
+clc.py
