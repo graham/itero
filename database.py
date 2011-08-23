@@ -6,7 +6,10 @@ import json
 import hashlib
 import shutil
 
-from commit import Transaction, Statement, Row
+from transaction import Transaction
+from row import Row
+from statement import Statement
+
 from util import __not_implemented__
 
 VERBOSE = 0
@@ -15,6 +18,7 @@ class Database(object):
     "Base class for database, should never be instantiated on it's own."
     def __init__(self, data_path):
         self.revision = 0
+        self.packed_file_size = 1024 * 1024 * 4
 
         #This will be updated by something else, Dropbox, rsync, etc.
         self.data_path = os.path.abspath(data_path)
