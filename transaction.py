@@ -1,10 +1,12 @@
 import json
 import hashlib
+import time
+from statement import Statement
 
 class Transaction(object):
     def __init__(self, rev=None):
-        #uuid = str(uuid.uuid4()).split('-')[-1]
-        self.revision = str(time.time()) + str(rev)
+        self.ts = str("%.4f" % time.time())
+        self.revision = str(rev)
         self.statements = []
 
     def __repr__(self):
@@ -13,31 +15,27 @@ class Transaction(object):
     def add(self, statement):
         self.statements.append(statement)
 
-    def hash_data(self):
+    def hashed_data(self):
         h = hashlib.sha256()
         for i in self.statements:
-            h.update( i.target_key )
-            h.update( i.data_hash )
-            h.update( i.command )
-            h.update( str(i.args) )
+            h.update( i.as_json() )
         return h.hexdigest()
 
-    def save_conflict(self, root):
-        f = open(root + '/conflict/%s_%s' % (self.revision, self.hash_data()), 'w')
-        for i in self.statements:
-            f.write( i.as_json() + '\n' )
-        f.close()
+    def path(self):
+        return '%s_%s_%s' % (self.ts, self.revision, self.hashed_data())
 
     def save(self, root):
-        f = open(root + '/transaction/%s_%s' % (self.revision, self.hash_data()), 'w')
+        f = open(root + '/transaction/' + self.path(), 'w')
         for i in self.statements:
             f.write( i.as_json() + '\n' )
         f.close()
         
     @classmethod
-    def load(cls, root, rev, hash):
+    def load(cls, root, path):
+        ts, rev, hash = path.split("_")
         t = Transaction(rev)
-        f = open(root + '/transaction/%s_%s' % (rev, hash))
+        t.ts = ts
+        f = open(root + '/transaction/%s' % path)
         d = f.read()
         for i in d.split('\n'):
             i = i.strip()

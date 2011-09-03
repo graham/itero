@@ -1,11 +1,16 @@
 import types
 
+def parse_object(obj, path):
+    cur = path.split('.')[0]
+    if type(obj) == types.DictionaryType:
+
 class View(object):
-    def __init__(self, items=None):
+    def __init__(self, items=None, attr_key=None):
         if items == None:
             self.items = []
         else:
             self.items = items
+        self.attr_key = attr_key
             
     def add(self, item):
         self.items.append(item)
@@ -14,7 +19,7 @@ class View(object):
         self.items.remove(item)
         
     def filter(self, func):
-        return View( filter(func, self.items) )
+        return View( filter(func, self.items), attr_key = self.attr_key )
 
     def __repr__(self):
         return self.__str__()
@@ -26,24 +31,32 @@ class View(object):
         for i in self.items:
             yield i
 
-    def l_find(self, l):
-        return View( filter( l, self.items ) )
-
     def find(self, d=None):
         if d == None:
-            return View(self.items)
+            return View(self.items, self.attr_key)
+        attr_key = self.attr_key
 
         def is_match(item):
             for m_key, m_value in d.iteritems():
                 if type(item) == types.DictionaryType:
                     def test(x):
-                        if (m_key in x): 
-                            return x[m_key] 
+                        if attr_key == None:
+                            if (m_key in x): 
+                                return x[m_key] 
+                            else:
+                                return None
                         else:
-                            return None
+                            data = getattr(x, attr_key)
+                            if (m_key in data):
+                                return data[m_key]
+                            else:
+                                return None
                     keyf = test
                 elif type(item) in (types.ObjectType, types.InstanceType, types.ClassType) or issubclass(item.__class__, object):
-                    keyf = lambda x: getattr(item, m_key, False)
+                    if attr_key == None:
+                        keyf = lambda x: getattr(item, m_key, False)
+                    else:
+                        keyf = lambda x: getattr(getattr(x, attr_key), m_key)
                 else:
                     raise Exception("I don't know how to handle this type: %r" % type(item))
 
@@ -52,29 +65,29 @@ class View(object):
                 else:
                     return False
 
-        return View( filter( is_match, self.items ) )
+        return View( filter( is_match, self.items ), attr_key=self.attr_key )
 
     def sort(self, key):
         pass
 
     def limit(self, amount):
-        return View( self.items[:amount] )
+        return View( self.items[:amount], self.attr_key )
 
     def offset(self, amount):
-        return View( self.items[amount:] )
+        return View( self.items[amount:], self.attr_key )
 
-    def first(self):
+    def head(self):
         if len(self.items):
             return self.items[0]
         else:
             return None
 
-    def rest(self):
-        return View(self.items[1:])
+    def tail(self):
+        return View(self.items[1:], self.attr_key)
 
 if __name__ == '__main__':
     x = View([1,2,3,4,5])
-    print x.l_find( lambda x: True if x > 3 else False )
+    print x.filter( lambda x: True if x > 3 else False )
 
     y = View()
     for i in range(0, 10):
@@ -96,4 +109,14 @@ if __name__ == '__main__':
     for i in z.find({'count':0}):
         print i
 
-    print y.find({'count':0}).first()
+    print y.find({'count':0}).head()
+
+    class ComplexTest(object):
+        def __init__(self, data):
+            self.data = data
+
+    z = View(attr_key='data')
+    for i in range(0, 10):
+        z.add( ComplexTest( {str(i):i} ) )
+    print z.find( {'1':1} )
+    
