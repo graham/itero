@@ -45,7 +45,6 @@ class TestJSONDatabase(unittest.TestCase):
     def test_create(self):
         self.init()
         x = self.connect()
-        self.assertTrue( os.path.isfile(TestJSONDatabase.data_path + "%s.commit_log.txt" % platform.node()) )
     
     def test_put(self):
         self.init()
