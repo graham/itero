@@ -1,0 +1,14 @@
+************************************
+*            The Basics            *
+************************************
+
+First and foremost Itero is not designed to be fast, it's designed to be reliable.
+Second, Itero is not designed to be ultra compact, it's designed to be reliable.
+Third, Itero is not designed to run huge web applications, it's designed to give you a really good key value store that's reliable.
+
+Database keeps it's own commit log somewhere.
+This should be packed sometimes.
+
+Transactions are a file of serialized statements.
+
+
