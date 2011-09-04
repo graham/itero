@@ -1,4 +1,5 @@
 from database import Database
+from kvql import dig, digs
 
 def connect(path, verbose=False):
     if verbose:

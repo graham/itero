@@ -322,4 +322,11 @@ class Database(object):
     def drop(self, key):
         self.execute(key, 'drop', [])
 
-        
+    def __iter__(self):
+        keys = self.objects.keys()
+        def gen(keys):
+            for i in keys:
+                if i in self.objects:
+                    yield self.objects[i]
+        return gen(keys)
+
