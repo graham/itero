@@ -10,6 +10,7 @@ import uuid
 from transaction import Transaction
 from row import Row
 from statement import Statement
+from kvql import dig, condition_to_lambda
 
 from util import __not_implemented__
 
@@ -19,7 +20,7 @@ class Database(object):
     "Base class for database, should never be instantiated on it's own."
     def __init__(self, data_path):
         self.revision = 0
-        self.packed_file_size = 1024 * 1024 * 4
+        self.packed_file_size = 1024 * 1024 * 1024 * 3 # 3 megabytes
 
         #This will be updated by something else, Dropbox, rsync, etc.
         self.data_path = os.path.abspath(data_path)
@@ -62,7 +63,7 @@ class Database(object):
 
         h = transaction.hashed_data()
 
-        if transaction.hashed_data() in self.transactions:
+        if transaction.path() in self.transactions:
             return
 
         if not is_replay:
@@ -111,7 +112,7 @@ class Database(object):
                 if len(self.objects[hk]) == 0:
                     self.objects.pop( hk )
         
-        self.transactions.append(transaction.hashed_data())
+        self.transactions.append(transaction.path())
         return key_cache
 
     def find_new_transactions(self):
@@ -119,7 +120,7 @@ class Database(object):
         new = []
         for i in os.listdir(p):
             ts, rev, hash = i.split('_')
-            if hash not in self.transactions:
+            if i not in self.transactions:
                 new.append(i)
         new.sort()
         return new
@@ -134,6 +135,7 @@ class Database(object):
                 import traceback
                 traceback.print_exc()
                 print 'Failed Commit: %s' % t
+        self.revision += len(trans)
         return len(trans)
 
     walk = get_current
@@ -221,9 +223,6 @@ class Database(object):
         self.revision += 1
         return t
 
-    def compact(self):
-        pass
-
     def gen_key(self, key):
         hk = hashlib.sha256()
         hk.update(key)
@@ -254,6 +253,21 @@ class Database(object):
         for i in row.parents:
             rows.append( self.get_revision(row.key, i) )
         return rows
+
+    def get_all_parent_revs(self, row):
+        revs = []
+        cur_rows = [row]
+        while cur_rows:
+            next_rows = []
+            for i in cur_rows:
+                parents = self.get_parents(i)
+                for j in parents:
+                    if j and j.hashed_data() not in revs:
+                        revs.append(j.hashed_data())
+                        next_rows.append(j)
+            cur_rows = next_rows
+        
+        return [row.hashed_data()] + revs
 
     def save_doc(self, doc):
         hk = self.gen_key(doc.key)
@@ -305,7 +319,10 @@ class Database(object):
                 if hit:
                     hits.append(doc)
         return hits
-            
+
+    def query(self, condition):
+        return self.filter( condition_to_lambda(condition) )
+
     def keys(self):
         keys = []
         for i in self.objects:
@@ -321,6 +338,11 @@ class Database(object):
         self.execute(key, 'update', value)
     def drop(self, key):
         self.execute(key, 'drop', [])
+    def create(self, key, value):
+        row = Row(key)
+        t = self.transaction()
+        t.add( row.statement('set', value) )
+        self.commit_transaction(t)
 
     def __iter__(self):
         keys = self.objects.keys()
@@ -330,3 +352,48 @@ class Database(object):
                     yield self.objects[i]
         return gen(keys)
 
+    def replay_compacted(self):
+        compacted_transactions = os.listdir(self.data_path + '/compact/')
+        compacted_transactions.sort()
+
+        cur_trans = None
+        for i in compacted_transactions:
+            f = open(self.data_path + '/compact/' + i)
+            for j in f.readlines():
+                j = j.strip()
+                if j.startswith('begin'):
+                    # start transaction
+                    if cur_trans:
+                        self.commit_transaction(cur_trans, is_replay=True)
+                    ts, rev, hash = j.split(' ')[1].split("_")
+                    cur_trans = Transaction(rev)
+                    cur_trans.ts = ts
+                else:
+                    cur_trans.statements.append( Statement.from_json(j) )
+        if cur_trans:
+            self.commit_transaction(cur_trans)
+
+    def compact(self):
+        data = []
+        count = 0
+
+        f = open(self.data_path + "/compact/%i" % (self.revision), 'w')
+        for i in self.transactions:
+            if Transaction.exists(self.data_path, i):
+                i = Transaction.load(self.data_path, i)
+                f.write("begin %s\n" % i.path())
+                for j in i.statements:
+                    f.write(j.as_json() + '\n')
+                os.remove(self.data_path + "/transaction/%s" % i.path())
+        f.close()
+        
+        f = open(self.data_path + "/checkpoints/%i" % self.revision, 'w')
+        for i in self:
+            for j in i:
+                f.write( json.dumps([j.key, j.get_data()]) + "\n")
+                subdir = j.hashed_key()[:2]
+                all_revs = self.get_all_parent_revs(j)
+                for rev in all_revs:
+                    if os.path.exists(self.data_path + "/data/%s/%s_%s" % (subdir, j.hashed_key(), rev)):
+                        os.remove(self.data_path + "/data/%s/%s_%s" % (subdir, j.hashed_key(), rev))
+        f.close()

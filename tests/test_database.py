@@ -169,32 +169,6 @@ class TestJSONDatabase(unittest.TestCase):
         
         self.assertEqual(data, value)
         
-    def test_many_keys_many_transaction_with_replay(self):
-        bunch_o_keys = [(i, gen()) for i in range(50)]
-        self.init()
-        x = self.connect()
-
-        value = {}
-        for i in range(10):
-            t = x.transaction()
-
-            for index, i in bunch_o_keys:
-                r = Row('test')
-                t.add( r.statement('update', {i:index}) )
-                value.update({i:index})
-
-            x.commit_transaction(t)
-
-        data = x.get_rows('test')
-        data = data[0].data
-        self.assertEqual(data, value)
-        
-        y = self.connect()
-        y.get_current()
-        ydata = y.get_rows('test')
-        ydata = ydata[0].data
-        self.assertEqual(ydata, value)
-    
     def test_key_drop(self):
         self.init()
         x = self.connect()

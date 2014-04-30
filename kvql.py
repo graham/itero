@@ -1,6 +1,8 @@
 # Key Value Query Language
 # Try to be as much like SQL as possible, sorta.
 
+import json
+
 def digs(s, objs, default=None):
     return map( lambda obj: dig(s, obj, default), objs )
 
@@ -32,3 +34,44 @@ def dig(s, obj, default=None):
                 return dig( rest, new_obj )
     return default
 
+def condition_to_lambda(condition):
+    condition = condition.strip()
+    if '==' in condition:
+        var, value = condition.split('==')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) == value else False
+    elif '>' in condition:
+        var, value = condition.split('>')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) > value else False
+    elif '>=' in condition:
+        var, value = condition.split('>=')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) >= value else False
+    elif '<' in condition:
+        var, value = condition.split('<')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) < value else False
+    elif '<=' in condition:
+        var, value = condition.split('<=')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) <= value else False
+    elif '!=' in condition:
+        var, value = condition.split('!=')
+        var = var.strip()
+        value = value.strip()
+        value = json.loads(value)
+        return lambda doc: True if dig(var, doc) != value else False
+    else:
+        return lambda doc: True
+ 

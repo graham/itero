@@ -3,9 +3,11 @@ import hashlib
 import time
 from statement import Statement
 
+import os
+
 class Transaction(object):
     def __init__(self, rev=None):
-        self.ts = str("%.4f" % time.time())
+        self.ts = str("%.8f" % time.time())
         self.revision = str(rev)
         self.statements = []
 
@@ -18,7 +20,7 @@ class Transaction(object):
     def hashed_data(self):
         h = hashlib.sha256()
         for i in self.statements:
-            h.update( i.as_json() )
+            h.update( i.target_key + i.target_hash + i.command )
         return h.hexdigest()
 
     def path(self):
@@ -42,3 +44,7 @@ class Transaction(object):
             if i:
                 t.statements.append( Statement.from_json(i) )
         return t
+
+    @classmethod
+    def exists(cls, root, path):
+        return os.path.exists(root + '/transaction/' + path)

@@ -10,6 +10,9 @@ def connect(path, verbose=False):
     if verbose:
         print 'Sanity Check: %s' % str(status)
 
+    d.replay_compacted()
+    print 'compacted replay done'
+
     count = d.get_current()
     if verbose:
         print "Replayed %i transactions." % count

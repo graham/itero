@@ -9,6 +9,8 @@ import platform
 
 from statement import Statement
 
+SUPPORTED_DATA_TYPES = [ dict, ]
+
 class Row(object):
     def __init__(self, key, parents=None, data=None, result_of=None):
         self.result_of = result_of
@@ -18,6 +20,8 @@ class Row(object):
             self.data = {}
         else:
             self.data = data
+
+        assert type(self.data) in SUPPORTED_DATA_TYPES
 
         if parents:
             self.parents = parents
